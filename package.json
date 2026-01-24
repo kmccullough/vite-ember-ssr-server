@@ -12,6 +12,11 @@
   "keywords": [ "vite", "ember", "fastboot", "ssr" ],
   "type": "module",
   "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./vite-plugin.js": "./vite-plugin.js",
+    "./*": "./*"
+  },
   "dependencies": {
     "basic-auth": "^2.0.1",
     "chalk": "^5.6.2",
