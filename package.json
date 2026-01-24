@@ -3,7 +3,11 @@
   "version": "0.0.1",
   "description": "Server-side rendering (SSR) node server library for Ember on Vite",
   "license": "MIT",
-  "author": "Kerry McCullough <kmccullough@usbr.gov>",
+  "author": "Kerry McCullough <subone@subone.org>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kmccullough/vite-ember-ssr-server"
+  },
   "private": true,
   "type": "module",
   "main": "./index.js",
@@ -22,8 +26,7 @@
     "sirv": "^3.0.2",
     "source-map-support": "^0.5.21",
     "url": "^0.11.4",
-    "vite": "^6.0.0",
-    "vite-plugin-context-logger": "workspace:*"
+    "vite": "^6.0.0"
   },
   "devDependencies": {
     "json-stable-stringify": "^1.3.0"
