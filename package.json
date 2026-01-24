@@ -9,6 +9,7 @@
     "url": "https://github.com/kmccullough/vite-ember-ssr-server"
   },
   "private": true,
+  "keywords": [ "vite", "ember", "fastboot", "ssr" ],
   "type": "module",
   "main": "./index.js",
   "dependencies": {
