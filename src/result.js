@@ -1,6 +1,3 @@
-import * as SimpleDOM from 'simple-dom';
-const HTMLSerializer = new SimpleDOM.HTMLSerializer(SimpleDOM.voidMap);
-
 const SHOEBOX_TAG_PATTERN = '<script type="ssr/shoebox"';
 const HTML_HEAD_REGEX = /^([\s\S]*<\/head>)([\s\S]*)/;
 
@@ -207,18 +204,55 @@ function extractExtraAttributes(element) {
       klass = elementClass;
       let otherAttrs = element.attributes.filter(attr => attr.name !== 'class');
       if (otherAttrs.length > 0) {
-        attributes = HTMLSerializer.attributes(otherAttrs);
+        attributes = serializeAttributes(otherAttrs);
       } else {
         attributes = null;
       }
     } else {
-      attributes = HTMLSerializer.attributes(element.attributes);
+      attributes = serializeAttributes(element.attributes);
       klass = null;
     }
   } else {
     klass = attributes = null;
   }
   return { klass, attributes };
+}
+
+function serializeAttributes(attributes) {
+  let buffer = '';
+  for (let i = 0, l = attributes.length; i < l; i++) {
+    buffer += serializeAttribute(attributes[i]);
+  }
+  return buffer;
+}
+
+function serializeAttribute(attr) {
+  if (!attr.specified) {
+    return '';
+  }
+  if (attr.value) {
+    return ' ' + attr.name + '="' + escapeAttrValue(attr.value) + '"';
+  }
+  return ' ' + attr.name;
+}
+
+function escapeAttrValue(attrValue) {
+  if (attrValue.indexOf('&') > -1 || attrValue.indexOf('"') > -1) {
+    return attrValue.replace(/[&"]/g, matcher);
+  }
+
+  return attrValue;
+}
+
+const ESC = {
+  '"': '&quot;',
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+};
+
+function matcher(char) {
+  return ESC[char];
 }
 
 function missingTag(tag) {
