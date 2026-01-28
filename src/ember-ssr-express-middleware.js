@@ -1,4 +1,5 @@
 import chalk from 'chalk';
+import mime from 'mime';
 
 import EmberSsr from './ember-ssr.js';
 
@@ -25,7 +26,7 @@ export default function emberSsrExpressMiddleware(options = {}) {
       const result = await emberSsr.visit(path, visitOptions);
       if (!result) {
         const html = emberSsr._app.html || emberSsr.html || options.visitOptions?.html;
-        return html ? res.send(html) : res.status(500);
+        return html ? res.type('text/html').send(html) : res.status(500);
       }
       let body = options.chunkedResponse
         ? await result.chunks() : await result.html();
@@ -46,10 +47,11 @@ export default function emberSsrExpressMiddleware(options = {}) {
       res.status(result.statusCode);
 
       if (typeof body === 'string') {
-        res.send(body);
+        res.type('text/html').send(body);
       } else if (result.error) {
-        res.send(body[0]);
+        res.type('text/html').send(body[0]);
       } else {
+        res.type('text/html');
         body.forEach(chunk => res.write(chunk));
         res.end();
       }

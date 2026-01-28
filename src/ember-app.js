@@ -383,10 +383,6 @@ export default class EmberApp {
     const { appContext, isSandboxPreBuilt }
       = await this.getNewApplicationInstance();
 
-    if (!appContext) {
-
-    }
-
     const { app, context } = appContext;
 
     const doc = context.document;
