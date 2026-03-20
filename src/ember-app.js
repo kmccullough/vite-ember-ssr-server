@@ -1,7 +1,12 @@
-import Module from 'node:module';
+import Module, { builtinModules } from 'node:module';
 import { dirname, resolve, normalize } from 'node:path';
 import URL from 'node:url';
 import vm from 'node:vm';
+
+const nodeBuiltins = new Set([
+  ...builtinModules,
+  ...builtinModules.map(m => `node:${m}`),
+]);
 import chalk from 'chalk';
 import fs from 'fs-extra';
 import { HTMLElement } from 'linkedom/worker';
@@ -131,7 +136,7 @@ export default class EmberApp {
       URL,
       addEventListener: noop,
       removeEventListener: noop,
-      document: createDocument(),
+      document: this.buildSandboxDocument(),
       HTMLElement,
       navigator: { userAgent: '' },
 
@@ -149,6 +154,18 @@ export default class EmberApp {
     globals.window.self = globals;
 
     return vm.createContext(globals);
+  }
+
+  buildSandboxDocument() {
+    const doc = createDocument();
+    const { config, appName } = this;
+    if (config && config[appName]) {
+      const meta = doc.createElement('meta');
+      meta.setAttribute('name', `${appName}/config/environment`);
+      meta.setAttribute('content', encodeURIComponent(JSON.stringify(config[appName])));
+      doc.head.appendChild(meta);
+    }
+    return doc;
   }
 
   buildWrappedConsole() {
@@ -218,6 +235,9 @@ export default class EmberApp {
 
     debug('files evaluated');
 
+    const configMeta = context.document.querySelector(`meta[name="${this.appName}/config/environment"]`);
+    if (configMeta) configMeta.remove();
+
     // If the application factory couldn't be found, throw an error
     if (!createSsrApp || typeof createSsrApp !== 'function') {
       console.log(
@@ -247,7 +267,28 @@ export default class EmberApp {
     const importModuleDynamically = async specifier => {
       return (await link(specifier)).namespace;
     };
+    const builtinCache = new Map();
     const link = async (specifier, referencingModule) => {
+      if (nodeBuiltins.has(specifier)) {
+        if (builtinCache.has(specifier)) return builtinCache.get(specifier);
+        const canonical = specifier.startsWith('node:') ? specifier : `node:${specifier}`;
+        const native = await import(canonical);
+        const exportNames = Object.keys(native);
+        const synth = new vm.SyntheticModule(
+          ['default', ...exportNames.filter(k => k !== 'default')],
+          function () {
+            this.setExport('default', native.default ?? native);
+            for (const key of exportNames) {
+              if (key !== 'default') this.setExport(key, native[key]);
+            }
+          },
+          { context, identifier: canonical },
+        );
+        await synth.link(() => {});
+        await synth.evaluate();
+        builtinCache.set(specifier, synth);
+        return synth;
+      }
       const base = referencingModule?.identifier || defaultBase;
       const identifier = await this.resolveImport(specifier, base);
       const module = await this.buildScript(
@@ -485,7 +526,7 @@ function createShoebox(doc, fastbootInfo) {
     let scriptText = doc.createRawHTMLSection(textValue);
     let scriptEl = doc.createElement('script');
 
-    scriptEl.setAttribute('type', 'ssr/shoebox');
+    scriptEl.setAttribute('type', 'fastboot/shoebox');
     scriptEl.setAttribute('id', `shoebox-${key}`);
     scriptEl.appendChild(scriptText);
     doc.body.appendChild(scriptEl);
