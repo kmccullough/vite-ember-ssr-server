@@ -1,4 +1,4 @@
-const SHOEBOX_TAG_PATTERN = '<script type="ssr/shoebox"';
+const SHOEBOX_TAG_PATTERN = '<script type="fastboot/shoebox"';
 const HTML_HEAD_REGEX = /^([\s\S]*<\/head>)([\s\S]*)/;
 
 /**
