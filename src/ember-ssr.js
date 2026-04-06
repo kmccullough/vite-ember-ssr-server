@@ -40,18 +40,16 @@ export default class EmberSsr {
    * @param {string} options.distPath the path to the built Ember application
    * @param {Boolean} [options.resilient=false] if true, errors during rendering won't reject the `visit()` promise but instead resolve to a {@link Result}
    * @param {Function} [options.buildSandboxGlobals] a function used to build the final set of global properties setup within the sandbox
-   * @param {Number} [options.maxSandboxQueueSize] - maximum sandbox queue size when using buildSandboxPerRequest flag.
    */
   constructor(options = {}) {
-    let { buildSandboxGlobals, maxSandboxQueueSize } = options;
+    let { buildSandboxGlobals } = options;
 
     this.resilient = 'resilient' in options ? Boolean(options.resilient) : false;
 
     this.ssrPaths = new SsrPaths(options.ssrPaths || options);
     this.buildSandboxGlobals = buildSandboxGlobals;
-    this.maxSandboxQueueSize = maxSandboxQueueSize;
 
-    this._buildEmberApp(this.ssrPaths, this.buildSandboxGlobals, maxSandboxQueueSize);
+    this._buildEmberApp(this.ssrPaths, this.buildSandboxGlobals);
   }
 
   /**
@@ -100,7 +98,6 @@ export default class EmberSsr {
   _buildEmberApp(
     ssrPaths = this.ssrPaths,
     buildSandboxGlobals = this.buildSandboxGlobals,
-    maxSandboxQueueSize = this.maxSandboxQueueSize
   ) {
     this.ssrPaths = ssrPaths = SsrPaths.wrap(ssrPaths);
     if (!ssrPaths.hasPath) {
@@ -118,7 +115,6 @@ export default class EmberSsr {
     this._app = new EmberApp({
       ssrPaths,
       buildSandboxGlobals,
-      maxSandboxQueueSize,
     });
   }
 }
