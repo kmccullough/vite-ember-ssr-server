@@ -191,7 +191,7 @@ export default class Result {
     this._head = head;
 
     // Adding script boundary around the body
-    this._body = `<script type="x/boundary" id="ssr-body-start"></script>${body}<script type="x/boundary" id="ssr-body-end"></script>`;
+    this._body = `<script type="x/boundary" id="fastboot-body-start"></script>${body}<script type="x/boundary" id="fastboot-body-end"></script>`;
   }
 }
 
