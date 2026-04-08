@@ -39,7 +39,7 @@ export default class ExpressHTTPServer {
     }
 
     if ((username ?? null) !== null || (password ?? null) !== null) {
-      this.ui.writeLine(`adding basic auth; username=${username}; password=${password}`);
+      this.ui.writeLine(`adding basic auth; username=${username}`);
       router.use(basicAuth(username, password));
     }
 

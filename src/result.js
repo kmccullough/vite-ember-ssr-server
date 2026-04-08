@@ -41,7 +41,14 @@ export default class Result {
       this._body = '';
 
       if (location) {
-        this._body = `<h1>Redirecting to <a href="${location}">${location}</a></h1>`;
+        let safeLocation = location
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#x27;');
+        let safeHref = /^https?:\/\//i.test(location) || location.startsWith('/') ? safeLocation : '#';
+        this._body = `<h1>Redirecting to <a href="${safeHref}">${safeLocation}</a></h1>`;
       }
     }
 
