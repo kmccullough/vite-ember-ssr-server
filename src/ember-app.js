@@ -87,7 +87,8 @@ export default class EmberApp {
     };
 
     const sandboxCjsRequire = (specifier) => {
-      return sandboxRequire(specifier);
+      try { return require(specifier); }
+      catch { return sandboxRequire(specifier); }
     };
 
     const doc = this.buildSandboxDocument();
