@@ -17,10 +17,12 @@ This fork replaces `vm.SourceTextModule` with `vm.Script` (CJS), which allows fu
 Not published to npm. Install from GitHub:
 
 ```bash
-# In your Ember app's package.json (build-time dependency)
 "vite-ember-ssr-server": "github:st-h/vite-ember-ssr-server#stable"
+```
 
-# In your server's package.json (runtime dependency)
+Add this to both your Ember app's `package.json` (build-time, for the Vite plugin) and your `server/package.json` (runtime). Some package managers (e.g. npm in Docker) require the tarball URL format instead:
+
+```bash
 "vite-ember-ssr-server": "https://github.com/st-h/vite-ember-ssr-server/archive/stable.tar.gz"
 ```
 
@@ -75,7 +77,24 @@ export function createSsrApp() {
 }
 ```
 
-### 4. Build
+### 4. Add SSR Placeholders to `index.html`
+
+The SSR server replaces placeholder comments in your `index.html` with the rendered output. Add these where you want the SSR content injected:
+
+```html
+<head>
+  <!-- VITE_EMBER_SSR_HEAD -->
+  <!-- your existing head content -->
+</head>
+<body>
+  <!-- VITE_EMBER_SSR_BODY -->
+  <!-- your scripts -->
+</body>
+```
+
+`<!-- VITE_EMBER_SSR_HEAD -->` is replaced with any `<head>` content set during SSR (meta tags, title, etc.). `<!-- VITE_EMBER_SSR_BODY -->` is replaced with the rendered route HTML, wrapped in boundary markers (`fastboot-body-start` / `fastboot-body-end`).
+
+### 5. Build
 
 ```bash
 # Client build
@@ -89,7 +108,7 @@ This produces:
 - `dist/public/` — client assets (JS, CSS, images)
 - `dist/ssr/` — SSR bundle (`app.js`) + FastBoot config
 
-### 5. Write a Server
+### 6. Write a Server
 
 Create a `server/src/server.js`:
 
@@ -143,7 +162,7 @@ With a `server/package.json`:
 }
 ```
 
-### 6. Run
+### 7. Run
 
 ```bash
 cd server && npm install && node src/server.js
@@ -181,9 +200,9 @@ Key flags:
 
 ## Memory Management
 
-Each SSR request creates a fresh `vm.Context`, evaluates the CJS bundle, renders the route, and destroys the context. To ensure prompt cleanup:
+Each SSR request creates a fresh `vm.Context`, evaluates the CJS bundle, renders the route, and destroys the context. V8 will garbage-collect these contexts naturally. In most cases, you don't need to do anything special.
 
-**Trigger GC after each request** in your server's `beforeMiddleware`:
+If you're running in a memory-constrained container and want tighter control, you can optionally trigger explicit GC after each request:
 
 ```js
 beforeMiddleware(app) {
@@ -196,9 +215,7 @@ beforeMiddleware(app) {
 },
 ```
 
-Without explicit GC, V8 defers collection and heap grows until the next natural GC cycle. With it, memory stays flat at ~20-25% of a 768MB heap under load.
-
-**Run with `--expose-gc`** to make `global.gc()` available.
+This requires running Node with `--expose-gc`. It trades a small amount of per-request latency for more predictable memory usage. Whether this is worthwhile depends on your container size and traffic pattern. Start without it and add it if you see memory pressure.
 
 **Use 2 workers** (`workerCount: 2`) as a starting point. The cluster primary automatically restarts workers that crash.
 
