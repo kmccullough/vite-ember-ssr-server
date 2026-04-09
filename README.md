@@ -42,6 +42,7 @@ export default defineConfig(() => {
         output: {
           ...(isSsr ? {
             format: 'cjs',
+            exports: 'named',
             inlineDynamicImports: true,
           } : {}),
         },
@@ -169,12 +170,14 @@ COPY server/src ./src
 USER node
 EXPOSE 4000
 
+ENV EXPERIMENTAL_RENDER_MODE_SERIALIZE=true
 CMD ["node", "--expose-gc", "--max-old-space-size=768", "src/server.js"]
 ```
 
 Key flags:
 - `--expose-gc` — enables `global.gc()` for explicit memory management (see [Memory Management](#memory-management))
 - `--max-old-space-size=768` — set the V8 heap limit appropriate for your container
+- `EXPERIMENTAL_RENDER_MODE_SERIALIZE=true` — enables Glimmer serialization markers for client-side rehydration (see [Rehydration](#rehydration))
 
 ## Memory Management
 
@@ -198,6 +201,91 @@ Without explicit GC, V8 defers collection and heap grows until the next natural 
 **Run with `--expose-gc`** to make `global.gc()` available.
 
 **Use 2 workers** (`workerCount: 2`) as a starting point. The cluster primary automatically restarts workers that crash.
+
+## Rehydration
+
+By default, the client app re-renders from scratch after the SSR HTML is displayed. With rehydration enabled, the client takes over the existing SSR DOM instead of replacing it, eliminating the flash between SSR content and client render.
+
+Rehydration requires three pieces working together:
+
+### 1. Server: Enable Serialize Mode
+
+Set `EXPERIMENTAL_RENDER_MODE_SERIALIZE=true` on your server process. This tells Ember to render with Glimmer's serialization mode, which inserts marker comments (`%+b:0%`) into the HTML that the client uses to identify rehydratable DOM nodes.
+
+In Docker:
+```dockerfile
+ENV EXPERIMENTAL_RENDER_MODE_SERIALIZE=true
+```
+
+Or when running directly:
+```bash
+EXPERIMENTAL_RENDER_MODE_SERIALIZE=true node server/src/server.js
+```
+
+### 2. Client: Detection Script + ApplicationInstance.reopen
+
+Add two scripts to your `index.html`, after the `<!-- VITE_EMBER_SSR_BODY -->` placeholder and before the main app module:
+
+```html
+<!-- VITE_EMBER_SSR_BODY -->
+
+<script>
+  // Detect SSR serialization markers before Ember boots.
+  // Must be a regular script (not module) to run synchronously.
+  (function() {
+    var boundary = document.getElementById('fastboot-body-start');
+    if (boundary) {
+      var next = boundary.nextSibling;
+      if (next && next.nodeType === 8 && next.nodeValue === '%+b:0%') {
+        window.__REHYDRATE__ = true;
+        boundary.remove();
+        var end = document.getElementById('fastboot-body-end');
+        if (end) end.remove();
+      }
+    }
+  })();
+</script>
+<script type="module">
+  import ApplicationInstance from '@ember/application/instance';
+  import Application from './app/app';
+  import environment from './app/config/environment';
+
+  // Reopen ApplicationInstance BEFORE Application.create() so that _bootSync
+  // uses rehydrate mode from the very first call. Instance initializers can't
+  // do this because they run INSIDE _bootSync (too late to patch it).
+  if (window.__REHYDRATE__) {
+    ApplicationInstance.reopen({
+      _bootSync(options) {
+        if (options === undefined) {
+          options = { _renderMode: 'rehydrate' };
+        }
+        return this._super(options);
+      }
+    });
+  }
+
+  Application.create(environment.APP);
+</script>
+```
+
+**Why two scripts?** The detection must be a regular `<script>` (runs synchronously during HTML parsing) to set `window.__REHYDRATE__` before the module script runs. Module scripts are deferred.
+
+**Why `.reopen()` instead of an instance-initializer?** Instance initializers run inside `ApplicationInstance._bootSync()`. By the time they execute, `_bootSync` is already on the call stack, so patching it from an initializer has no effect. The `.reopen()` modifies the class prototype before any instance is created.
+
+### 3. Patch ember-cli-fastboot's Broken Rehydration Script
+
+`ember-cli-fastboot` ships with `vendor/experimental-render-mode-rehydrate.js` which tries to enable rehydration via AMD `require('ember')`. This doesn't work with Embroider/Vite (no AMD modules) and logs a console error. Disable it with a patch.
+
+With pnpm:
+```bash
+pnpm patch ember-cli-fastboot
+# Replace vendor/experimental-render-mode-rehydrate.js with:
+# // Disabled: rehydration is handled via ESM imports in index.html.
+# // See https://github.com/ember-fastboot/ember-cli-fastboot/issues/938
+pnpm patch-commit <path-shown-by-pnpm-patch>
+```
+
+`ember-cli-fastboot` also includes a `clear-double-boot` instance-initializer that strips SSR content from the DOM. When rehydration is active, the boundary markers are already removed by the detection script, so `clear-double-boot` becomes a no-op (it guards on `getElementById('fastboot-body-start')` returning null).
 
 ## Server Options
 
