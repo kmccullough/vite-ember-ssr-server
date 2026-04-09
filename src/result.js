@@ -234,9 +234,6 @@ function serializeAttributes(attributes) {
 }
 
 function serializeAttribute(attr) {
-  if (!attr.specified) {
-    return '';
-  }
   if (attr.value) {
     return ' ' + attr.name + '="' + escapeAttrValue(attr.value) + '"';
   }
