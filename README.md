@@ -26,9 +26,26 @@ Add this to both your Ember app's `package.json` (build-time, for the Vite plugi
 "vite-ember-ssr-server": "https://github.com/st-h/vite-ember-ssr-server/archive/stable.tar.gz"
 ```
 
-### 2. Configure Vite
+### 2. Configure Embroider Compat
 
-Add the plugin to your `vite.config.mjs` and configure the SSR build output:
+`ember-cli-fastboot` provides `content-for` hooks that are incompatible with Embroider. Disable them in `ember-cli-build.js`:
+
+```js
+return compatBuild(app, buildOnce, {
+  useAddonConfigModule: false,
+  useAddonAppBoot: false,
+});
+```
+
+Also create an empty `_fastboot_` directory in your app root. Embroider's entrypoint builder expects this directory when `ember-cli-fastboot` is installed:
+
+```bash
+mkdir _fastboot_
+```
+
+### 3. Configure Vite
+
+Add the plugin to your `vite.config.mjs` and configure the SSR build output (note: the `isSsr` flag is read at the top level, not inside the callback):
 
 ```js
 import { viteEmberSsrServerPlugin } from 'vite-ember-ssr-server/vite-plugin.mjs';
@@ -61,7 +78,7 @@ export default defineConfig(() => {
 });
 ```
 
-### 3. Export `createSsrApp`
+### 4. Export `createSsrApp`
 
 Your Ember app entry point (`app/app.ts` or `app/app.js`) must export a `createSsrApp` function:
 
@@ -77,7 +94,7 @@ export function createSsrApp() {
 }
 ```
 
-### 4. Add SSR Placeholders to `index.html`
+### 5. Add SSR Placeholders to `index.html`
 
 The SSR server replaces placeholder comments in your `index.html` with the rendered output. Add these where you want the SSR content injected:
 
@@ -94,7 +111,23 @@ The SSR server replaces placeholder comments in your `index.html` with the rende
 
 `<!-- VITE_EMBER_SSR_HEAD -->` is replaced with any `<head>` content set during SSR (meta tags, title, etc.). `<!-- VITE_EMBER_SSR_BODY -->` is replaced with the rendered route HTML, wrapped in boundary markers (`fastboot-body-start` / `fastboot-body-end`).
 
-### 5. Build
+### 6. Configure Module Whitelist
+
+If your SSR bundle requires Node.js built-in modules (e.g. `crypto` from `@warp-drive`), add them to the `fastboot.moduleWhitelist` in `config/environment.js`:
+
+```js
+module.exports = function (environment) {
+  const ENV = {
+    // ...
+    fastboot: {
+      moduleWhitelist: ['crypto'],
+    },
+  };
+  // ...
+};
+```
+
+### 7. Build
 
 ```bash
 # Client build
@@ -108,7 +141,7 @@ This produces:
 - `dist/public/` — client assets (JS, CSS, images)
 - `dist/ssr/` — SSR bundle (`app.js`) + FastBoot config
 
-### 6. Write a Server
+### 8. Write a Server
 
 Create a `server/src/server.js`:
 
@@ -162,7 +195,7 @@ With a `server/package.json`:
 }
 ```
 
-### 7. Run
+### 9. Run
 
 ```bash
 cd server && npm install && node src/server.js

@@ -22,11 +22,11 @@ function normalizeSsrConfig(config, serialize = false) {
   }
   config = {
     name: config.modulePrefix || config.name,
-    ssrServer: normalizeSsrServerConfig(config.ssrServer || config.fastboot, serialize),
+    ssrServer: normalizeSsrServerConfig(config.ssrServer || config.fastboot, serialize) || {},
   };
   const result = {};
   for (const [ key, value ] of Object.entries(config)) {
-    if (value) {
+    if (value !== undefined && value !== null) {
       result[key] = value;
     }
   }
