@@ -1,0 +1,19 @@
+import { pageTitle } from 'ember-page-title';
+import { WelcomePage } from 'ember-welcome-page';
+import EmptyComponent from '../components/empty-component';
+
+<template>
+    <video autoplay="" muted="" playsinline="" loop="" class="stacktune__app-controllers-index-module__header-img lazy-video" poster="https://static.stacktune.com/videos/index/Hero.jpg" width="1025" height="510" preload="auto">
+      <source src="https://static.stacktune.com/videos/index/Hero.mp4" type="video/mp4">
+      <source src="https://static.stacktune.com/videos/index/Hero.webm" type="video/webm">
+    </video>
+  {{pageTitle "TestApp"}}
+  <EmptyComponent />
+  <EmptyComponent />
+  <EmptyComponent />
+  <nav class="test-nav">Navigation</nav>
+  <main>
+    {{outlet}}
+    <WelcomePage @extension="gts" />
+  </main>
+</template>

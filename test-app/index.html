@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <!-- VITE_EMBER_SSR_HEAD -->
+    <title>TestApp</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    {{content-for "head"}}
+
+    <link integrity="" rel="stylesheet" href="/@embroider/virtual/vendor.css">
+    <link integrity="" rel="stylesheet" href="/@embroider/virtual/app.css">
+
+    {{content-for "head-footer"}}
+  </head>
+  <body><!-- VITE_EMBER_SSR_BODY --><script src="/@embroider/virtual/vendor.js"></script><script>
+      // Detect SSR serialization markers before Ember boots.
+      (function() {
+        // MutationObserver to detect DOM replacement during rehydration
+        var observer = new MutationObserver(function(mutations) {
+          mutations.forEach(function(m) {
+            if (m.removedNodes.length > 0) {
+              for (var i = 0; i < m.removedNodes.length; i++) {
+                var node = m.removedNodes[i];
+                if (node.nodeType === 1 && node.tagName !== 'SCRIPT') {
+                  console.log('[DOM] removed:', node.tagName, node.className?.substring?.(0, 60) || '', 'from', m.target.tagName || 'unknown');
+                }
+              }
+            }
+          });
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+        window.__DOM_OBSERVER__ = observer;
+
+        var boundary = document.getElementById('fastboot-body-start');
+        if (boundary) {
+          var next = boundary.nextSibling;
+          if (next && next.nodeType === 8 && next.nodeValue === '%+b:0%') {
+            window.__REHYDRATE__ = true;
+            console.log('[REHYDRATE] markers detected, enabling rehydration');
+
+            console.log('[REHYDRATE] body children before removal:', Array.from(document.body.childNodes).slice(0, 15).map(function(n) {
+              return n.nodeType === 1 ? n.tagName + '#' + n.id : n.nodeType === 8 ? '<!--' + n.nodeValue.substring(0, 20) + '-->' : 'TEXT:' + JSON.stringify(n.nodeValue?.substring(0, 20));
+            }));
+
+            boundary.remove();
+            var end = document.getElementById('fastboot-body-end');
+            if (end) end.remove();
+
+            console.log('[REHYDRATE] body children after removal:', Array.from(document.body.childNodes).slice(0, 15).map(function(n) {
+              return n.nodeType === 1 ? n.tagName + '#' + n.id : n.nodeType === 8 ? '<!--' + n.nodeValue.substring(0, 20) + '-->' : 'TEXT:' + JSON.stringify(n.nodeValue?.substring(0, 20));
+            }));
+          } else {
+            console.log('[REHYDRATE] boundary found but no %+b:0% marker after it. Next sibling:', next?.nodeType, next?.nodeValue?.substring(0, 30));
+          }
+        } else {
+          console.log('[REHYDRATE] no fastboot-body-start found (not SSR or markers missing)');
+        }
+      })();
+    </script>
+    <script type="module">
+      import ApplicationInstance from '@ember/application/instance';
+      import Application from './app/app';
+      import environment from './app/config/environment';
+
+      if (window.__REHYDRATE__) {
+        console.log('[REHYDRATE] patching ApplicationInstance._bootSync');
+        ApplicationInstance.reopen({
+          _bootSync(options) {
+            if (options === undefined) {
+              options = {};
+            }
+            options._renderMode = 'rehydrate';
+            this._renderMode = 'rehydrate';
+            var result = this._super(options);
+            var env = this.__container__.lookup('-environment:main');
+            console.log('[REHYDRATE] env._renderMode after boot:', env?._renderMode);
+            return result;
+          }
+        });
+      }
+
+      Application.create(environment.APP);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,2 @@
+patchedDependencies:
+  ember-cli-fastboot: patches/ember-cli-fastboot.patch

@@ -1,0 +1,9 @@
+{
+  "name": "test-app-server",
+  "private": true,
+  "type": "module",
+  "main": "./src/server.js",
+  "dependencies": {
+    "vite-ember-ssr-server": "file:../../"
+  }
+}
